@@ -6,5 +6,6 @@ dependencies:
   - pip
   - notebook
   - pylint
+  - black
   # - pip:
   #     - xgboost
