@@ -1,0 +1,9 @@
+# Use `conda env create slot-tracker-environment.yml` to create the environment
+name: slot-tracker
+channels:
+  - defaults
+dependencies:
+  - pip
+  - notebook
+  # - pip:
+  #     - xgboost
