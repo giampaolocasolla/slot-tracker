@@ -131,9 +131,9 @@ template = cv2.Canny(template, 50, 200)
 w, h = template.shape[::-1]
 (tH, tW) = template.shape[:2]
 
-found = None
+found = (np.NINF, None, None)
 
-for scale in np.linspace(0.2, 4.0, 100)[::-1]:
+for scale in np.linspace(0.2, 3.0, 50)[::-1]:
     print(scale)
     # resize the image according to the scale, and keep track
     # of the ratio of the resizing
@@ -151,7 +151,7 @@ for scale in np.linspace(0.2, 4.0, 100)[::-1]:
     (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
 
     # if we have found a new maximum correlation value, then update the bookkeeping variable
-    if found is None or maxVal > found[0]:
+    if maxVal > found[0]:
         found = (maxVal, maxLoc, r)
 
 # unpack the found varaible and compute the (x, y) coordinates
