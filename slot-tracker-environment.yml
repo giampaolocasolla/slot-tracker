@@ -12,5 +12,7 @@ dependencies:
   - pillow
   - pyautogui
   - opencv
+  - imutils
+  - matplotlib
   # - pip:
   #     - xgboost
