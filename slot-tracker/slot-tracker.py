@@ -13,6 +13,11 @@ except ImportError:
     import ImageGrab
 
 
+def data_path(filename):
+    """A shortcut for joining the 'data/'' file path, since it is used so often. Returns the filename with 'data/' prepended."""
+    return os.path.join("data", filename)
+
+
 def actual_value(img=None):
     if img is None:
         img = ImageGrab.grab()
@@ -25,5 +30,5 @@ def actual_value(img=None):
     return value_gross
 
 
-print(actual_value(Image.open("../data/prova_slot.png")))
-print(actual_value())
+# print(actual_value(Image.open("../data/slot_bar.png")))
+# print(actual_value())
