@@ -15,9 +15,16 @@ import cv2
 ################################################################
 
 REGION_W = 1920
-REGION_H = 204
+REGION_H = 216
 MONEY_H = 45
 TEMPLATE = "template.png"
+BUTTONS = {
+    "PLAY": (int(REGION_W / 2), int(REGION_H / 2)),
+    "LIVELLO_DOWN": (int(REGION_W / 2 - 489), int(REGION_H / 2)),
+    "LIVELLO_UP": (int(REGION_W / 2 - 326), int(REGION_H / 2)),
+    "VALORE_DOWN": (int(REGION_W / 2 + 326), int(REGION_H / 2)),
+    "VALORE_UP": (int(REGION_W / 2 + 489), int(REGION_H / 2)),
+}
 
 ################################################################
 # Functions
@@ -145,16 +152,40 @@ def get_slot_region(which_resize="template"):
 
     # logging.info(f"Slot region found: {SLOT_REGION}")
     print(f"Slot region found: {SLOT_REGION}")
+    plt.figure(figsize=(15, 3))
+    plt.imshow(pyautogui.screenshot(region=SLOT_REGION))
+    plt.axis("off")
 
 
-def actual_value(img=None):
-    if img is None:
-        img = pyautogui.screenshot(region=MONEY_REGION)
-        img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.bitwise_not(img)
+def update_slot_buttons():
+    BUTTONS["PLAY"] = (
+        int(SLOT_REGION[0] + SLOT_REGION[2] / 2),
+        int(SLOT_REGION[1] + SLOT_REGION[3] / 2),
+    )
+    BUTTONS["LIVELLO_DOWN"] = (
+        int(BUTTONS["PLAY"][0] - (489 * SLOT_REGION[2] / REGION_W)),
+        BUTTONS["PLAY"][1],
+    )
+    BUTTONS["LIVELLO_UP"] = (
+        int(BUTTONS["PLAY"][0] - (326 * SLOT_REGION[2] / REGION_W)),
+        BUTTONS["PLAY"][1],
+    )
+    BUTTONS["VALORE_DOWN"] = (
+        int(BUTTONS["PLAY"][0] + (326 * SLOT_REGION[2] / REGION_W)),
+        BUTTONS["PLAY"][1],
+    )
+    BUTTONS["VALORE_UP"] = (
+        int(BUTTONS["PLAY"][0] + (489 * SLOT_REGION[2] / REGION_W)),
+        BUTTONS["PLAY"][1],
+    )
+
+
+def actual_value():
+    img = pyautogui.screenshot(region=MONEY_REGION)
+    img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.bitwise_not(img)
     window = pytesseract.image_to_string(img, lang="ita")
-    print(window)
     money_str = re.findall(r"\b(?:Denaro|Saldo): \€*(\d+[.,]*\d+)\b", window)[0]
     try:
         value_gross = float(re.sub(r"[,.]", "", money_str)) / 100
