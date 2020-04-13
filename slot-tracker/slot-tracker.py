@@ -7,7 +7,7 @@ import numpy as np
 import pyautogui
 import pytesseract
 from matplotlib import pyplot as plt
-from PIL import Image
+from PIL import Image, ImageGrab
 
 import cv2
 
@@ -26,6 +26,7 @@ BUTTONS = {
     "VALORE_DOWN": (int(REGION_W / 2 + 330), int(REGION_H / 2)),
     "VALORE_UP": (int(REGION_W / 2 + 540), int(REGION_H / 2)),
 }
+STATUS = False
 
 ################################################################
 # Functions
@@ -213,8 +214,27 @@ def actual_value():
     return value_gross
 
 
-get_slot_region(which_resize="screen")
-plot_slot_region()
-update_slot_buttons()
-print(actual_value())
-test_slot_buttons()
+def get_slot_status(COLOR):
+    global STATUS
+    STATUS = ImageGrab.grab().getpixel(BUTTONS["PLAY"]) == COLOR
+    return STATUS
+
+
+def main():
+    get_slot_region(which_resize="screen")
+    plot_slot_region()
+    update_slot_buttons()
+    test_slot_buttons()
+    # Initialize COLOR
+    print("Taking baseline color")
+    COLOR = ImageGrab.grab().getpixel(BUTTONS["PLAY"])
+    print("It's starting in 5 seconds")
+    time.sleep(5)
+    while not STATUS:
+        get_slot_status(COLOR)
+
+    print(actual_value())
+
+
+if __name__ == "__main__":
+    main()
