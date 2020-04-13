@@ -1,5 +1,6 @@
 import os
 import re
+import time
 
 import imutils
 import numpy as np
@@ -15,15 +16,15 @@ import cv2
 ################################################################
 
 REGION_W = 1920
-REGION_H = 216
+REGION_H = 220
 MONEY_H = 45
 TEMPLATE = "template.png"
 BUTTONS = {
     "PLAY": (int(REGION_W / 2), int(REGION_H / 2)),
-    "LIVELLO_DOWN": (int(REGION_W / 2 - 489), int(REGION_H / 2)),
-    "LIVELLO_UP": (int(REGION_W / 2 - 326), int(REGION_H / 2)),
-    "VALORE_DOWN": (int(REGION_W / 2 + 326), int(REGION_H / 2)),
-    "VALORE_UP": (int(REGION_W / 2 + 489), int(REGION_H / 2)),
+    "LIVELLO_DOWN": (int(REGION_W / 2 - 500), int(REGION_H / 2)),
+    "LIVELLO_UP": (int(REGION_W / 2 - 330), int(REGION_H / 2)),
+    "VALORE_DOWN": (int(REGION_W / 2 + 330), int(REGION_H / 2)),
+    "VALORE_UP": (int(REGION_W / 2 + 540), int(REGION_H / 2)),
 }
 
 ################################################################
@@ -39,6 +40,7 @@ def data_path(filename):
 def get_slot_region(which_resize="template"):
     """Obtains the region that the Slot is on the screen and assigns it to SLOT_REGION."""
     global SLOT_REGION, MONEY_REGION
+    print("Start searching for the Slot region")
 
     if which_resize == "template":
         # take a screenshot of the screen and store it in memory, then
@@ -152,9 +154,13 @@ def get_slot_region(which_resize="template"):
 
     # logging.info(f"Slot region found: {SLOT_REGION}")
     print(f"Slot region found: {SLOT_REGION}")
-    plt.figure(figsize=(15, 3))
+
+
+def plot_slot_region(figsize=(15, 3)):
+    plt.figure(figsize=figsize)
     plt.imshow(pyautogui.screenshot(region=SLOT_REGION))
     plt.axis("off")
+    plt.show()
 
 
 def update_slot_buttons():
@@ -163,36 +169,52 @@ def update_slot_buttons():
         int(SLOT_REGION[1] + SLOT_REGION[3] / 2),
     )
     BUTTONS["LIVELLO_DOWN"] = (
-        int(BUTTONS["PLAY"][0] - (489 * SLOT_REGION[2] / REGION_W)),
+        int(BUTTONS["PLAY"][0] - (500 * SLOT_REGION[2] / REGION_W)),
         BUTTONS["PLAY"][1],
     )
     BUTTONS["LIVELLO_UP"] = (
-        int(BUTTONS["PLAY"][0] - (326 * SLOT_REGION[2] / REGION_W)),
+        int(BUTTONS["PLAY"][0] - (330 * SLOT_REGION[2] / REGION_W)),
         BUTTONS["PLAY"][1],
     )
     BUTTONS["VALORE_DOWN"] = (
-        int(BUTTONS["PLAY"][0] + (326 * SLOT_REGION[2] / REGION_W)),
+        int(BUTTONS["PLAY"][0] + (330 * SLOT_REGION[2] / REGION_W)),
         BUTTONS["PLAY"][1],
     )
     BUTTONS["VALORE_UP"] = (
-        int(BUTTONS["PLAY"][0] + (489 * SLOT_REGION[2] / REGION_W)),
+        int(BUTTONS["PLAY"][0] + (540 * SLOT_REGION[2] / REGION_W)),
         BUTTONS["PLAY"][1],
     )
+
+
+def test_slot_buttons():
+    print("Starting test buttons")
+    for key, value in BUTTONS.items():
+        print(key)
+        pyautogui.moveTo(value)
+        time.sleep(2)
 
 
 def actual_value():
     img = pyautogui.screenshot(region=MONEY_REGION)
     img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # img = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY_INV)[1]
     img = cv2.bitwise_not(img)
-    window = pytesseract.image_to_string(img, lang="ita")
-    money_str = re.findall(r"\b(?:Denaro|Saldo): \€*(\d+[.,]*\d+)\b", window)[0]
+    window = pytesseract.image_to_string(img, lang="ita", config="--psm 7 --oem 3")
+    money_str = re.findall(
+        r"\b(?:Denaro:|Credito:|S*aldo:|\€|) \€*(\d+[.,]*\d+)\b",
+        window,
+        flags=re.IGNORECASE,
+    )
     try:
-        value_gross = float(re.sub(r"[,.]", "", money_str)) / 100
+        value_gross = float(re.sub(r"[,.]", "", money_str[0])) / 100
     except IndexError:
         value_gross = np.nan
     return value_gross
 
 
-get_slot_region()
+get_slot_region(which_resize="screen")
+plot_slot_region()
+update_slot_buttons()
 print(actual_value())
+test_slot_buttons()
