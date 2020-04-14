@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 from PIL import Image, ImageGrab
 
 import cv2
+from slot-tracker import slot_classes
 
 ################################################################
 # Parameters
