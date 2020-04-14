@@ -1,3 +1,4 @@
+import datetime as dt
 import os
 import re
 import time
@@ -35,7 +36,9 @@ STATUS = False
 
 def data_path(filename):
     """A shortcut for joining the 'data/'' file path, since it is used so often. Returns the filename with 'data/' prepended."""
-    return os.path.join("..", "data", filename)
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "data", filename)
+    )
 
 
 def get_slot_region(which_resize="template"):
@@ -228,12 +231,41 @@ def main():
     # Initialize COLOR
     print("Taking baseline color")
     COLOR = ImageGrab.grab().getpixel(BUTTONS["PLAY"])
-    print("It's starting in 5 seconds")
-    time.sleep(5)
-    while not STATUS:
-        get_slot_status(COLOR)
+    money = actual_value()
+    print(f"Saldo rilevato: {money}")
+    confirm = pyautogui.confirm(
+        text="Is it all good?", title="START", buttons=["Yes", "No"]
+    )
+    if confirm == "No":
+        pass
+    elif confirm == "Yes":
+        ROLLOVER = pyautogui.prompt(
+            text="How much Rollover?", title="Rollover", default=0
+        )
+        if ROLLOVER is None or ROLLOVER < 0:
+            pass
+        else:
+            bet = 1
+            total = 0
 
-    print(actual_value())
+            while total < ROLLOVER:
+                # get current time
+                timestamp = dt.datetime.now()
+
+                # play
+                pyautogui.click(BUTTONS["PLAY"])
+
+                # ready
+                while not STATUS:
+                    get_slot_status(COLOR)
+
+                # gain
+
+                # plot
+
+                # ML
+
+                # update bet and total
 
 
 if __name__ == "__main__":
