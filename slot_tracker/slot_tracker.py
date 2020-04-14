@@ -29,6 +29,8 @@ BUTTONS = {
     "VALORE_UP": (int(REGION_W / 2 + 540), int(REGION_H / 2)),
 }
 STATUS = False
+LIVELLI = list(range(1, 11))
+VALORI = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
 
 ################################################################
 # Functions

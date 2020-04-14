@@ -15,5 +15,6 @@ dependencies:
   - imutils
   - matplotlib
   - time
+  - pandas
   # - pip:
   #     - xgboost
