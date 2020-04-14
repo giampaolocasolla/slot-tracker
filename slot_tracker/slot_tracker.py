@@ -226,6 +226,17 @@ def get_slot_status(COLOR):
     return STATUS
 
 
+def change_bet(dict_change):
+    for key, value in dict_change.items():
+        if value > 0:
+            direction = "_UP"
+        elif value < 0:
+            direction = "_DOWN"
+
+        for i in range(value):
+            pyautogui.click(BUTTONS[key + direction])
+
+
 def main():
     get_slot_region(which_resize="screen")
     plot_slot_region()
