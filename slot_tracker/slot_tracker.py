@@ -1,4 +1,5 @@
 import datetime as dt
+import logging
 import os
 import re
 import time
@@ -12,6 +13,29 @@ from PIL import Image, ImageGrab
 
 import cv2
 from slot_tracker import slot_classes
+
+################################################################
+# Logger
+################################################################
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+file_handler = logging.FileHandler(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "log", "slot_tracker.log")
+    )
+)
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 ################################################################
 # Parameters
@@ -47,9 +71,10 @@ def data_path(filename):
 def get_slot_region(which_resize="template"):
     """Obtains the region that the Slot is on the screen and assigns it to SLOT_REGION."""
     global SLOT_REGION, MONEY_REGION
-    print("Start searching for the Slot region")
+    logger.info("Start searching for the Slot region")
 
     if which_resize == "template":
+        logger.info("Resize template: faster but less accurate")
         # take a screenshot of the screen and store it in memory, then
         # convert the PIL/Pillow image to an OpenCV compatible NumPy array
         img_rgb = pyautogui.screenshot()
@@ -95,6 +120,7 @@ def get_slot_region(which_resize="template"):
         )
 
     elif which_resize == "screen":
+        logger.info("Resize screen: slower but more accurate")
         # take a screenshot of the screen and store it in memory, then
         # convert the PIL/Pillow image to an OpenCV compatible NumPy array
         img_rgb = pyautogui.screenshot()
@@ -141,6 +167,7 @@ def get_slot_region(which_resize="template"):
         )
 
     else:
+        logger.error("Invalid which_resize")
         raise Exception("Invalid which_resize")
 
     SLOT_REGION = (
@@ -159,11 +186,11 @@ def get_slot_region(which_resize="template"):
         money_h,  # height
     )
 
-    # logging.info(f"Slot region found: {SLOT_REGION}")
-    print(f"Slot region found: {SLOT_REGION}")
+    logger.info(f"Slot region found: {SLOT_REGION}")
 
 
 def plot_slot_region(figsize=(15, 3)):
+    logger.info("Plotting slot region")
     plt.figure(figsize=figsize)
     plt.imshow(pyautogui.screenshot(region=SLOT_REGION))
     plt.axis("off")
@@ -171,6 +198,7 @@ def plot_slot_region(figsize=(15, 3)):
 
 
 def update_slot_buttons():
+    logger.info("Updating slot buttons")
     BUTTONS["PLAY"] = (
         int(SLOT_REGION[0] + SLOT_REGION[2] / 2),
         int(SLOT_REGION[1] + SLOT_REGION[3] / 2),
@@ -194,7 +222,7 @@ def update_slot_buttons():
 
 
 def test_slot_buttons():
-    print("Starting test buttons")
+    logger.info("Testing slot buttons")
     for key, value in BUTTONS.items():
         print(key)
         pyautogui.moveTo(value)
@@ -202,12 +230,14 @@ def test_slot_buttons():
 
 
 def actual_value():
+    logger.info("Finding actual money value")
     img = pyautogui.screenshot(region=MONEY_REGION)
     img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # img = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY_INV)[1]
     img = cv2.bitwise_not(img)
     window = pytesseract.image_to_string(img, lang="ita", config="--psm 7 --oem 3")
+    logger.debug(f"OCR result: {window}")
     money_str = re.findall(
         r"\b(?:Denaro:|Credito:|S*aldo:|\€|) \€*(\d+[.,]*\d+)\b",
         window,
@@ -216,6 +246,7 @@ def actual_value():
     try:
         value_gross = float(re.sub(r"[,.]", "", money_str[0])) / 100
     except IndexError:
+        logger.warning("Could not find money value")
         value_gross = np.nan
     return value_gross
 
@@ -227,26 +258,32 @@ def get_slot_status(COLOR):
 
 
 def change_bet(dict_change):
+    logger.info("Changing bet in slot")
+    logger.debug(f"Changing dictionary: {dict_change}")
     for key, value in dict_change.items():
         if value > 0:
             direction = "_UP"
         elif value < 0:
             direction = "_DOWN"
 
-        for i in range(value):
+        for _ in range(value):
             pyautogui.click(BUTTONS[key + direction])
+            logger.info(f"Clicked on {key + direction} button")
+
+        time.sleep(0.5)
 
 
 def main():
+    logger.info("Starting main function...")
     get_slot_region(which_resize="screen")
     plot_slot_region()
     update_slot_buttons()
     test_slot_buttons()
     # Initialize COLOR
-    print("Taking baseline color")
+    logger.info("Taking baseline color")
     COLOR = ImageGrab.grab().getpixel(BUTTONS["PLAY"])
     money = actual_value()
-    print(f"Saldo rilevato: {money}")
+    logger.info(f"Saldo rilevato: {money}")
     confirm = pyautogui.confirm(
         text="Is it all good?", title="START", buttons=["Yes", "No"]
     )
@@ -256,24 +293,29 @@ def main():
         ROLLOVER = pyautogui.prompt(
             text="How much Rollover?", title="Rollover", default=0
         )
+        logger.info(f"Rollover inserted: {ROLLOVER}")
         if ROLLOVER is None or ROLLOVER < 0:
             pass
         else:
-            bet = 1
-            total = 0
+            bet = slot_classes.Bet(1, LIVELLI, VALORI)
 
-            while total < ROLLOVER:
+            logger.info("Starting the game...")
+            while bet.total < ROLLOVER:
                 # get current time
                 timestamp = dt.datetime.now()
 
                 # play
                 pyautogui.click(BUTTONS["PLAY"])
+                logger.info("Clicked on PLAY button")
 
                 # ready
                 while not STATUS:
                     get_slot_status(COLOR)
+                logger.info("Spin ended")
 
                 # gain
+
+                # save result
 
                 # plot
 
