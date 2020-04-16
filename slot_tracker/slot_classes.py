@@ -1,7 +1,18 @@
+import csv
+import datetime
 import logging
+import os
 
 import numpy as np
 import pandas as pd
+
+################################################################
+# Path
+################################################################
+
+DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+os.makedirs(os.path.join(DATA_DIR, "log"), exist_ok=True)
+os.makedirs(os.path.join(DATA_DIR, "result"), exist_ok=True)
 
 ################################################################
 # Logger
@@ -12,11 +23,7 @@ logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-file_handler = logging.FileHandler(
-    os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "log", "slot_classes.log")
-    )
-)
+file_handler = logging.FileHandler(os.path.join(DATA_DIR, "log", "slot_tracker.log"))
 file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
@@ -33,17 +40,17 @@ class Bet:
         self.livelli = livelli
         self.valori = valori
         logger.info("Calculate all the combinations")
-        self.combinations = self.get_combinations(self.livelli, self.valori)
+        self.combinations = self.getCombinations(self.livelli, self.valori)
         logger.info("Select all the positions")
-        self.positions = self.get_positions(self.combinations)
+        self.positions = self.getPositions(self.combinations)
         self.possible_values = self.positions.index.tolist()
 
-    def get_combinations(self, x_values, y_values):
+    def getCombinations(self, x_values, y_values):
         df = pd.DataFrame([x_values] * len(y_values), index=y_values, columns=x_values)
         df = df.multiply(10 * df.index, axis=0).round(1)
         return df
 
-    def get_positions(self, whole_df):
+    def getPositions(self, whole_df):
         df = pd.DataFrame(
             index=np.unique(whole_df.values), columns=["VALORE", "LIVELLO"]
         )
@@ -52,7 +59,7 @@ class Bet:
             df.loc[i] = [x[0], y[0]]
         return df
 
-    def change_bet(self, new_value, difference=False):
+    def changeBet(self, new_value, difference=False):
 
         if difference == False:
             if new_value in self.positions.index:
@@ -81,3 +88,55 @@ class Bet:
             raise Exception("Invalid difference")
 
         return change.to_dict()
+
+
+class Result:
+    def __init__(self, cash, bet):
+        self.timestamp = []
+        self.cash = [cash]
+        self.bet = [bet]
+        self.gain = []
+        self.gain_rel = []
+
+    def timeNow(self):
+        self.timestamp.append(datetime.datetime.now())
+
+    def addGain(self, new_total):
+        if new_total == np.nan:
+            logger.warning("new_total is NaN so the gain will be NaN")
+        result = new_total - self.cash[-1]
+        self.gain.append(result)
+        self.gain_rel.append(result / self.bet[-1])
+        self.cash.append(new_total)
+
+    def getLastResult(self):
+        result = vars(self)
+        try:
+            for key, value in result.items():
+                result[key] = value[-1]
+        except IndexError:
+            logger.error("There are some attributes without values")
+        else:
+            logger.info(f"Last result: {result}")
+            return result
+
+    def saveResult(self, filename, result=None):
+        if result is None:
+            result = self.getLastResult()
+        path = os.path.join(DATA_DIR, "result", filename)
+        fieldnames = list(vars(self).keys())
+
+        if not os.path.isfile(path):
+            logger.info(f"There is no file {filename}")
+            with open(path, "w") as f:
+                writer = csv.DictWriter(f, delimiter=",", fieldnames=fieldnames)
+                writer.writeheader()
+            logger.info(
+                f"Created file {filename} with the following fields: {fieldnames}"
+            )
+        else:
+            logger.info(f"Found file {filename}")
+            with open(path, "a") as f:
+                writer = csv.DictWriter(f, delimiter=",", fieldnames=fieldnames)
+                writer.writerow(result)
+                logger.info("Added last result to the file")
