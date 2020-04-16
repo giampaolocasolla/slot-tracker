@@ -1,4 +1,5 @@
-import datetime as dt
+import csv
+import datetime
 import logging
 import os
 import re
@@ -14,6 +15,17 @@ from PIL import Image, ImageGrab
 import cv2
 from slot_tracker import slot_classes
 
+# os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+
+################################################################
+# Path
+################################################################
+
+DATA_DIR = os.path.join(os.getcwd(), "data")
+os.makedirs(os.path.join(DATA_DIR, "log"), exist_ok=True)
+os.makedirs(os.path.join(DATA_DIR, "result"), exist_ok=True)
+
 ################################################################
 # Logger
 ################################################################
@@ -23,11 +35,7 @@ logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-file_handler = logging.FileHandler(
-    os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "log", "slot_tracker.log")
-    )
-)
+file_handler = logging.FileHandler(os.path.join(DATA_DIR, "log", "slot_tracker.log"))
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 
@@ -55,6 +63,8 @@ BUTTONS = {
 STATUS = False
 LIVELLI = list(range(1, 11))
 VALORI = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
+RESULT_FILE = "starburst.csv"
+STARTING_BET = 1
 
 ################################################################
 # Functions
@@ -63,9 +73,7 @@ VALORI = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
 
 def data_path(filename):
     """A shortcut for joining the 'data/'' file path, since it is used so often. Returns the filename with 'data/' prepended."""
-    return os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "data", filename)
-    )
+    return os.path.join(DATA_DIR, filename)
 
 
 def get_slot_region(which_resize="template"):
@@ -275,6 +283,8 @@ def change_bet(dict_change):
 
 def main():
     logger.info("Starting main function...")
+    start_time = datetime.datetime.now()
+
     get_slot_region(which_resize="screen")
     plot_slot_region()
     update_slot_buttons()
@@ -297,12 +307,13 @@ def main():
         if ROLLOVER is None or ROLLOVER < 0:
             pass
         else:
-            bet = slot_classes.Bet(1, LIVELLI, VALORI)
+            bet = slot_classes.Bet(STARTING_BET, LIVELLI, VALORI)
+            result = slot_classes.Result(money, bet.value)
 
             logger.info("Starting the game...")
             while bet.total < ROLLOVER:
                 # get current time
-                timestamp = dt.datetime.now()
+                result.timeNow()
 
                 # play
                 pyautogui.click(BUTTONS["PLAY"])
@@ -314,15 +325,25 @@ def main():
                 logger.info("Spin ended")
 
                 # gain
+                money = actual_value()
+                logger.info(f"Saldo rilevato: {money}")
+                result.addGain(new_total=money)
 
                 # save result
+                result.saveResult(
+                    filename=start_time.strftime("%Y%m%d-%H%M") + "_" + RESULT_FILE
+                )
 
                 # plot
 
                 # ML
+                new_bet_value = bet.value  # TO CHANGE
 
                 # update bet and total
+                bet.total += bet.value
+                bet.value = new_bet_value
+                result.bet.append(bet.value)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
