@@ -104,15 +104,14 @@ class Result:
     def addGain(self, new_total):
         if new_total == np.nan:
             logger.warning("new_total is NaN so the gain will be NaN")
-        result = new_total - self.cash[-1]
+        result = np.round(new_total - self.cash[-1], 2)
         self.gain.append(result)
-        self.gain_rel.append(result / self.bet[-1])
-        self.cash.append(new_total)
+        self.gain_rel.append(np.round(result / self.bet[-1], 2))
 
     def getLastResult(self):
-        result = vars(self)
+        result = {}
         try:
-            for key, value in result.items():
+            for key, value in vars(self).items():
                 result[key] = value[-1]
         except IndexError:
             logger.error("There are some attributes without values")
@@ -134,9 +133,8 @@ class Result:
             logger.info(
                 f"Created file {filename} with the following fields: {fieldnames}"
             )
-        else:
-            logger.info(f"Found file {filename}")
-            with open(path, "a") as f:
-                writer = csv.DictWriter(f, delimiter=",", fieldnames=fieldnames)
-                writer.writerow(result)
-                logger.info("Added last result to the file")
+
+        with open(path, "a") as f:
+            writer = csv.DictWriter(f, delimiter=",", fieldnames=fieldnames)
+            writer.writerow(result)
+            logger.info(f"Added last result to the file {filename}")

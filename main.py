@@ -59,12 +59,13 @@ BUTTONS = {
     "LIVELLO_UP": (int(REGION_W / 2 - 330), int(REGION_H / 2)),
     "VALORE_DOWN": (int(REGION_W / 2 + 330), int(REGION_H / 2)),
     "VALORE_UP": (int(REGION_W / 2 + 540), int(REGION_H / 2)),
+    "COLOR": (int(REGION_W / 2 + 100), int(REGION_H / 2)),
 }
 STATUS = False
 LIVELLI = list(range(1, 11))
 VALORI = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
 RESULT_FILE = "starburst.csv"
-STARTING_BET = 1
+STARTING_BET = 0.1
 
 ################################################################
 # Functions
@@ -227,6 +228,10 @@ def update_slot_buttons():
         int(BUTTONS["PLAY"][0] + (540 * SLOT_REGION[2] / REGION_W)),
         BUTTONS["PLAY"][1],
     )
+    BUTTONS["COLOR"] = (
+        int(BUTTONS["PLAY"][0] + (100 * SLOT_REGION[2] / REGION_W)),
+        BUTTONS["PLAY"][1],
+    )
 
 
 def test_slot_buttons():
@@ -259,12 +264,6 @@ def actual_value():
     return value_gross
 
 
-def get_slot_status(COLOR):
-    global STATUS
-    STATUS = ImageGrab.grab().getpixel(BUTTONS["PLAY"]) == COLOR
-    return STATUS
-
-
 def change_bet(dict_change):
     logger.info("Changing bet in slot")
     logger.debug(f"Changing dictionary: {dict_change}")
@@ -289,9 +288,6 @@ def main():
     plot_slot_region()
     update_slot_buttons()
     test_slot_buttons()
-    # Initialize COLOR
-    logger.info("Taking baseline color")
-    COLOR = ImageGrab.grab().getpixel(BUTTONS["PLAY"])
     money = actual_value()
     logger.info(f"Saldo rilevato: {money}")
     confirm = pyautogui.confirm(
@@ -304,7 +300,10 @@ def main():
             text="How much Rollover?", title="Rollover", default=0
         )
         logger.info(f"Rollover inserted: {ROLLOVER}")
-        if ROLLOVER is None or ROLLOVER < 0:
+        if ROLLOVER is None:
+            pass
+        ROLLOVER = float(ROLLOVER)
+        if ROLLOVER < 0:
             pass
         else:
             bet = slot_classes.Bet(STARTING_BET, LIVELLI, VALORI)
@@ -312,16 +311,21 @@ def main():
 
             logger.info("Starting the game...")
             while bet.total < ROLLOVER:
+                time.sleep(1)
                 # get current time
                 result.timeNow()
 
                 # play
                 pyautogui.click(BUTTONS["PLAY"])
                 logger.info("Clicked on PLAY button")
+                time.sleep(1)
+                logger.info("Taking baseline color")
+                COLOR = ImageGrab.grab().getpixel(BUTTONS["COLOR"])
+                logger.info(f"Color detected: {COLOR}")
 
                 # ready
-                while not STATUS:
-                    get_slot_status(COLOR)
+                while ImageGrab.grab().getpixel(BUTTONS["COLOR"]) == COLOR:
+                    time.sleep(1)
                 logger.info("Spin ended")
 
                 # gain
@@ -343,7 +347,12 @@ def main():
                 bet.total += bet.value
                 bet.value = new_bet_value
                 result.bet.append(bet.value)
+                result.cash.append(money)
+
+    logger.info(f"Started with: EUR {result.cash[0]}")
+    logger.info(f"Ended with: EUR {result.cash[-1]}")
+    logger.info("END")
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
