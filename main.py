@@ -237,7 +237,7 @@ def update_slot_buttons():
 def test_slot_buttons():
     logger.info("Testing slot buttons")
     for key, value in BUTTONS.items():
-        print(key)
+        logger.info(f"Testing button: {key}")
         pyautogui.moveTo(value)
         time.sleep(2)
 
@@ -311,6 +311,7 @@ def main():
 
             logger.info("Starting the game...")
             while bet.total < ROLLOVER:
+                logger.info(f"Rollover to be done: {ROLLOVER - bet.total}")
                 time.sleep(1)
                 # get current time
                 result.timeNow()
@@ -346,8 +347,11 @@ def main():
                 # update bet and total
                 bet.total += bet.value
                 bet.value = new_bet_value
+                logger.info(f"New bet value: {bet.value}")
                 result.bet.append(bet.value)
                 result.cash.append(money)
+
+                logger.info(f"Rollover made: {bet.total}")
 
     logger.info(f"Started with: EUR {result.cash[0]}")
     logger.info(f"Ended with: EUR {result.cash[-1]}")
