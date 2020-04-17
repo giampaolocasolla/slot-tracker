@@ -247,7 +247,6 @@ def actual_value():
     img = pyautogui.screenshot(region=MONEY_REGION)
     img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # img = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY_INV)[1]
     img = cv2.bitwise_not(img)
     window = pytesseract.image_to_string(img, lang="ita", config="--psm 7 --oem 3")
     logger.debug(f"OCR result: {window}")
@@ -294,64 +293,66 @@ def main():
         text="Is it all good?", title="START", buttons=["Yes", "No"]
     )
     if confirm == "No":
+        logger.warning("Not confirmed")
         pass
     elif confirm == "Yes":
         ROLLOVER = pyautogui.prompt(
             text="How much Rollover?", title="Rollover", default=0
         )
         logger.info(f"Rollover inserted: {ROLLOVER}")
-        if ROLLOVER is None:
-            pass
-        ROLLOVER = float(ROLLOVER)
-        if ROLLOVER < 0:
-            pass
-        else:
-            bet = slot_classes.Bet(STARTING_BET, LIVELLI, VALORI)
-            result = slot_classes.Result(money, bet.value)
 
-            logger.info("Starting the game...")
-            while bet.total < ROLLOVER:
-                logger.info(f"Rollover to be done: {ROLLOVER - bet.total}")
+        bet = slot_classes.Bet(STARTING_BET, LIVELLI, VALORI)
+        result = slot_classes.Result(money, bet.value)
+        roll = slot_classes.RolloverManager(ROLLOVER, last_bet=bet.value)
+        rtp = slot_classes.RTP(steps=[1000, 500, 100, 50])
+
+        logger.info("Starting the game...")
+        while roll.remaining_rollover > 0:
+            logger.info(f"Rollover to be done: {roll.remaining_rollover}")
+            time.sleep(1)
+
+            # get current time
+            result.timeNow()
+
+            # play
+            pyautogui.click(BUTTONS["PLAY"])
+            logger.info("Clicked on PLAY button")
+            time.sleep(2)
+            logger.info("Taking baseline color")
+            COLOR = ImageGrab.grab().getpixel(BUTTONS["COLOR"])
+            logger.info(f"Color detected: {COLOR}")
+
+            # ready
+            while ImageGrab.grab().getpixel(BUTTONS["COLOR"]) == COLOR:
                 time.sleep(1)
-                # get current time
-                result.timeNow()
+            logger.info("Spin ended")
 
-                # play
-                pyautogui.click(BUTTONS["PLAY"])
-                logger.info("Clicked on PLAY button")
-                time.sleep(1)
-                logger.info("Taking baseline color")
-                COLOR = ImageGrab.grab().getpixel(BUTTONS["COLOR"])
-                logger.info(f"Color detected: {COLOR}")
+            # gain
+            money = actual_value()
+            logger.info(f"Saldo rilevato: {money}")
+            result.addGain(new_total=money)
 
-                # ready
-                while ImageGrab.grab().getpixel(BUTTONS["COLOR"]) == COLOR:
-                    time.sleep(1)
-                logger.info("Spin ended")
+            # save result
+            result.saveResult(
+                filename=start_time.strftime("%Y%m%d-%H%M") + "_" + RESULT_FILE
+            )
 
-                # gain
-                money = actual_value()
-                logger.info(f"Saldo rilevato: {money}")
-                result.addGain(new_total=money)
+            # RTP
+            rtp.printRTP(result.cash + [money])
 
-                # save result
-                result.saveResult(
-                    filename=start_time.strftime("%Y%m%d-%H%M") + "_" + RESULT_FILE
-                )
+            # ML
+            new_bet_value = bet.value  # TO CHANGE
 
-                # plot
+            # update bet and total
+            bet.total += bet.value
+            bet.value = new_bet_value
+            logger.info(f"New bet value: {bet.value}")
+            result.bet.append(bet.value)
+            result.cash.append(money)
+            roll.updateRollover(new_bet_value=bet.value)
 
-                # ML
-                new_bet_value = bet.value  # TO CHANGE
-
-                # update bet and total
-                bet.total += bet.value
-                bet.value = new_bet_value
-                logger.info(f"New bet value: {bet.value}")
-                result.bet.append(bet.value)
-                result.cash.append(money)
-
-                logger.info(f"Rollover made: {bet.total}")
+            logger.info(f"Rollover made: {bet.total}")
+            roll.timeRollover(diff_time=datetime.datetime.now() - result.timestamp[-1])
 
     logger.info(f"Started with: EUR {result.cash[0]}")
     logger.info(f"Ended with: EUR {result.cash[-1]}")

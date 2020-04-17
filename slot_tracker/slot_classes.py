@@ -143,3 +143,72 @@ class Result:
             writer = csv.DictWriter(f, delimiter=",", fieldnames=fieldnames)
             writer.writerow(result)
             logger.info(f"Added last result to the file {filename}")
+
+
+class RolloverManager:
+    def __init__(self, rollover, last_bet=0):
+        self.rollover = rollover
+        self.last_bet = last_bet
+        self.timeinterval = []
+        self.checkRollover()
+        self.remaining_rollover = self.rollover
+
+    def checkRollover(self):
+        if self.rollover is None:
+            logger.error("Rollover is None")
+            raise ValueError("Rollover is None")
+        try:
+            self.rollover = float(self.rollover)
+        except ValueError:
+            logger.error("Rollover could not be converted to float")
+            raise ValueError("Rollover could not be converted to float")
+        else:
+            if self.rollover < 0:
+                logger.warning("Rollover is negative")
+                raise ValueError("Rollover is negative")
+
+    def updateRollover(self, new_bet_value):
+        self.remaining_rollover -= self.last_bet
+        self.last_bet = new_bet_value
+
+    def timeRollover(self, diff_time):
+        self.timeinterval.append(diff_time)
+        mean_time = np.mean(self.timeinterval)
+        logger.info(f"Mean spin time: {str(mean_time).split('.')[0]}")
+
+        # spin made
+        logger.info(f"Spin made: {len(self.timeinterval)}")
+
+        # how many
+        remaining_spins = int((self.remaining_rollover // self.last_bet)) + 1
+        logger.info(f"Spin to do based on last bet: {remaining_spins}")
+
+        # how long
+        how_long = remaining_spins * mean_time
+        logger.info(f"Remaining time to finish: {str(how_long).split('.')[0]}")
+
+        # when
+        when_finish = datetime.datetime.now() + how_long
+        logger.info(f"Ending time: {when_finish.strftime('%Y-%m-%d %H:%M:%S')}")
+
+
+class RTP:
+    def __init__(self, steps=None):
+        self.steps = steps
+
+    def printRTP(self, values):
+        values = [x for x in values if not np.isnan(x)]
+        try:
+            last_element = values[-1]
+        except IndexError:
+            logger.warning("No RTP since there are only nan values")
+        else:
+            rtp = np.round(100 * last_element / values[0], 2)
+            string = f"\nAll\t\tRTP: {rtp}"
+            if self.steps is not None:
+                for step in self.steps:
+                    if len(values) > step:
+                        rtp = np.round(100 * last_element / values[-step], 2)
+                        tab = "\t\t" if len(str(step)) < 3 else "\t"
+                        string += f"\nLast {step}{tab}RTP: {rtp}"
+            logger.info(string)
