@@ -168,7 +168,7 @@ class RolloverManager:
                 raise ValueError("Rollover is negative")
 
     def updateRollover(self, new_bet_value):
-        self.remaining_rollover -= self.last_bet
+        self.remaining_rollover = np.round(self.remaining_rollover - self.last_bet, 2)
         self.last_bet = new_bet_value
 
     def timeRollover(self, diff_time):

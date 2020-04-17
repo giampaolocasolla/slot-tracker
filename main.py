@@ -65,7 +65,7 @@ STATUS = False
 LIVELLI = list(range(1, 11))
 VALORI = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
 RESULT_FILE = "starburst.csv"
-STARTING_BET = 0.1
+STARTING_BET = 0.5
 
 ################################################################
 # Functions
@@ -315,16 +315,16 @@ def main():
             result.timeNow()
 
             # play
-            pyautogui.click(BUTTONS["PLAY"])
+            pyautogui.click(BUTTONS["PLAY"], clicks=2, interval=0.5)
             logger.info("Clicked on PLAY button")
-            time.sleep(2)
+            # time.sleep(0.5)
             logger.info("Taking baseline color")
             COLOR = ImageGrab.grab().getpixel(BUTTONS["COLOR"])
             logger.info(f"Color detected: {COLOR}")
 
             # ready
             while ImageGrab.grab().getpixel(BUTTONS["COLOR"]) == COLOR:
-                time.sleep(1)
+                time.sleep(0.1)
             logger.info("Spin ended")
 
             # gain
@@ -341,10 +341,10 @@ def main():
             rtp.printRTP(result.cash + [money])
 
             # ML
-            new_bet_value = bet.value  # TO CHANGE
+            new_bet_value = np.round(bet.value, 2)  # TO CHANGE
 
             # update bet and total
-            bet.total += bet.value
+            bet.total = np.round(bet.total + bet.value, 2)
             bet.value = new_bet_value
             logger.info(f"New bet value: {bet.value}")
             result.bet.append(bet.value)
